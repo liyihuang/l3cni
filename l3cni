@@ -1,0 +1,83 @@
+#!/bin/bash
+log="/var/log/cni.log"
+config=$(cat /dev/stdin)
+
+echo "config: $config" >> "$log"
+echo "COMMAND: $CNI_COMMAND" >> "$log"
+echo "env: $(printenv)" >> "$log"
+
+if [ "$CNI_COMMAND" == "ADD" ]; then
+    podcidr=$(echo $config | jq -r ".podcidr")
+    gw_ip=$(echo $config | jq -r ".gateway")
+    peer_net=$(echo $config | jq -r ".peer_net")
+    peer_ip=$(echo $config | jq -r ".peer_ip")
+    netns_name=$(echo "$CNI_NETNS" | cut -d'/' -f5)
+
+
+    ip link set dev eth0 name eth999 || true
+
+    file="/tmp/host"
+    if [ ! -f "$file" ]; then
+        echo 2 > "$file"
+        host=2
+
+    else
+        host=$(<"$file")
+        ((host++))
+        echo "$host" > "$file"
+    fi
+
+    pod_ip=$(echo "$podcidr" | sed "s:\.0/24:.$host:")/32
+    host_nic=host-"$host"
+    ip link add $CNI_IFNAME type veth peer name "$host_nic"
+    ip link set "$host_nic" up
+    ip addr add "$gw_ip" dev "$host_nic" 
+    echo "1" > /proc/sys/net/ipv4/conf/"$host_nic"/proxy_arp
+    pod_mac=$(ip link show "$CNI_IFNAME" | awk '/link\/ether/ {print $2}')
+    ip link set $CNI_IFNAME netns $netns_name
+
+    ip netns exec $netns_name ip link set $CNI_IFNAME up
+    ip netns exec "$netns_name" ip addr add "$pod_ip" dev $CNI_IFNAME
+    ip netns exec "$netns_name" ip route add "$gw_ip" dev $CNI_IFNAME 
+    ip netns exec "$netns_name" ip route add default via "$gw_ip"
+    ip route add "$pod_ip" dev "$host_nic"
+    ip route add "$peer_net" via "$peer_ip" dev eth999 || true
+    
+
+    
+    
+    output_template='
+    {
+      "cniVersion": "0.3.1",
+      "interfaces": [
+          {
+              "name": "%s",
+              "mac": "%s",
+              "sandbox": "%s"
+          }
+      ],
+      "ips": [
+          {
+              "version": "4",
+              "address": "%s",
+              "interface": 0
+          }
+      ]
+    }'
+
+    output=$(printf "${output_template}" "$CNI_IFNAME" "$pod_mac" "$CNI_NETNS" "$pod_ip")
+    echo "$output" >> "$log"
+    echo "$output"
+
+elif [ "$CNI_COMMAND" == "DEL" ]; then
+    # Handle DEL command
+    echo "DEL command"
+elif [ "$CNI_COMMAND" == "VERSION" ]; then
+    echo '{
+      "cniVersion": "0.3.1",
+      "supportedVersions": [ "0.3.0", "0.3.1", "0.4.0" ]
+    }'
+else
+    echo "Unknown cni command: $CNI_COMMAND"
+    exit 1
+fi

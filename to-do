@@ -1,0 +1,7 @@
+iptable firewall
+iptables -A FORWARD -s 10.240.0.8 -d 10.240.1.10 -j DROP
+iptables -D FORWARD -s 10.240.0.8 -d 10.240.1.10 -j DROP
+
+bpf firewall
+
+bpf forward
