@@ -35,4 +35,3 @@ docker cp l3cni  l3cni-two-node-control-plane:/opt/cni/bin/
 
 docker cp 10-l3cni-worker.conf  l3cni-two-node-worker:/etc/cni/net.d/
 docker cp l3cni  l3cni-two-node-worker:/opt/cni/bin/
-

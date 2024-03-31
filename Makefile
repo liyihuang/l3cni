@@ -16,6 +16,16 @@ TARGET_MAX_CHAR_NUM=20
 init:
 	./init.sh
 
+ping:
+	kubectl run  busyboxc1 --image=curlimages/curl --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-control-plane" }}}' -- sleep infinity
+	kubectl run  busyboxc2 --image=nginx:stable-alpine3.17-slim --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-control-plane" }}}'
+	kubectl run  busyboxw1 --image=nginx:stable-alpine3.17-slim --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-worker" }}}'
+
+firewall:
+	./firewall.sh
+
+
+
 destroy:
 	kind delete cluster -n l3cni-two-node
 help:
