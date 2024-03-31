@@ -15,9 +15,8 @@ jq --arg control_node_podcidr "$control_node_podcidr" \
 --arg control_node_gw_ip "$control_node_gw_ip" \
 --arg worker_node_podcidr "$worker_node_podcidr" \
 --arg worker_node_ip "$worker_node_ip" \
-'.podcidr = $control_node_podcidr | 
-    .gateway = $control_node_gw_ip | 
-    .peer_net = $worker_node_podcidr | 
+'.podcidr = $control_node_podcidr |
+    .peer_net = $worker_node_podcidr |
     .peer_ip = $worker_node_ip' 10-l3cni-control.conf > tmp_config.json && mv tmp_config.json 10-l3cni-control.conf
 
 
@@ -25,9 +24,8 @@ jq --arg worker_node_podcidr "$worker_node_podcidr" \
 --arg worker_node_gw_ip "$worker_node_gw_ip" \
 --arg control_node_podcidr "$control_node_podcidr" \
 --arg control_node_ip "$control_node_ip" \
-'.podcidr = $worker_node_podcidr | 
-    .gateway = $worker_node_gw_ip | 
-    .peer_net = $control_node_podcidr | 
+'.podcidr = $worker_node_podcidr |
+    .peer_net = $control_node_podcidr |
     .peer_ip = $control_node_ip' 10-l3cni-worker.conf > tmp_config.json && mv tmp_config.json 10-l3cni-worker.conf
 
 docker cp 10-l3cni-control.conf  l3cni-two-node-control-plane:/etc/cni/net.d/
