@@ -8,7 +8,6 @@ echo "env: $(printenv)" >> "$log"
 
 if [ "$CNI_COMMAND" == "ADD" ]; then
     podcidr=$(echo $config | jq -r ".podcidr")
-    gw_ip=$(echo $config | jq -r ".gateway")
     peer_net=$(echo $config | jq -r ".peer_net")
     peer_ip=$(echo $config | jq -r ".peer_ip")
     netns_name=$(echo "$CNI_NETNS" | cut -d'/' -f5)
@@ -29,23 +28,21 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
     host_nic=host-"$host"
     ip link add "$host_nic" type veth peer name $CNI_IFNAME netns $netns_name
     ip link set "$host_nic" up
-    ip addr add "$gw_ip" dev "$host_nic" 
     echo "1" > /proc/sys/net/ipv4/conf/"$host_nic"/proxy_arp
     pod_mac=$(ip link show "$CNI_IFNAME" | awk '/link\/ether/ {print $2}')
     ip link set $CNI_IFNAME netns $netns_name
 
     ip netns exec $netns_name ip link set $CNI_IFNAME up
     ip netns exec "$netns_name" ip addr add "$pod_ip" dev $CNI_IFNAME
-    ip netns exec "$netns_name" ip route add "$gw_ip" dev $CNI_IFNAME 
-    ip netns exec "$netns_name" ip route add default via "$gw_ip"
+    ip netns exec "$netns_name" ip route add default dev $CNI_IFNAME
     ip route add "$pod_ip" dev "$host_nic"
+
     ip route add "$peer_net" via "$peer_ip" dev eth0
 
 
 
 
-    
-    
+
     output_template='
     {
       "cniVersion": "0.3.1",
