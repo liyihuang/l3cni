@@ -1,11 +1,11 @@
-#include <linux/bpf.h>
-#include <linux/pkt_cls.h>
-#include <linux/if_ether.h>
-#include <linux/ip.h>
-#include <linux/tcp.h>
-#include <bpf/bpf_helpers.h>
+#include "vmlinux.h"
 
 #include "bpf_endian.h"
+#include "bpf_helpers.h"
+#include "if_ether_defs.h"
+
+#define TC_ACT_OK 0
+#define TC_ACT_SHOT 2
 
 struct {
 __uint(type, BPF_MAP_TYPE_HASH);
