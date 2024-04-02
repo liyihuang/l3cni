@@ -1,11 +1,18 @@
-#include "vmlinux.h"
+#include <linux/bpf.h>
+#include <linux/pkt_cls.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <bpf/bpf_helpers.h>
 
 #include "bpf_endian.h"
-#include "bpf_helpers.h"
-#include "if_ether_defs.h"
 
-#define TC_ACT_OK 0
-#define TC_ACT_SHOT 2
+struct {
+__uint(type, BPF_MAP_TYPE_HASH);
+__uint(max_entries, 100);
+__type(key, __u32);
+__type(value, __u32);
+} bpf_match SEC(".maps");
 
 __attribute__((section("egress"), used))
 int drop_src_dst_ip(struct __sk_buff *skb) {
@@ -22,10 +29,8 @@ int drop_src_dst_ip(struct __sk_buff *skb) {
        return TC_ACT_OK;
 
     struct iphdr *ip = (struct iphdr *)(data + l3_off);
-    if (ip->protocol != IPPROTO_ICMP)
-        return TC_ACT_OK;
-
-    if (ip->saddr != bpf_htonl(0xC0A8021C) && ip->daddr != bpf_htonl(0xC0A802C9)){
+    __u32 *value = bpf_map_lookup_elem(&bpf_match, &(ip->saddr));
+    if (value && ip->daddr == *value){
         return TC_ACT_OK;
     }
 
