@@ -31,10 +31,9 @@ int drop_src_dst_ip(struct __sk_buff *skb) {
     struct iphdr *ip = (struct iphdr *)(data + l3_off);
     __u32 *value = bpf_map_lookup_elem(&bpf_match, &(ip->saddr));
     if (value && ip->daddr == *value){
-        return TC_ACT_OK;
+        return TC_ACT_SHOT;
     }
-
-    return TC_ACT_SHOT;
+    return TC_ACT_OK;
 }
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
