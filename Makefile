@@ -29,6 +29,8 @@ install_iptable_firewall:
 uninstall_iptable_firewall:
 	./iptable_firewall.sh uninstall
 
+install_bpf_firewall:
+	./bpf_firewall.sh install
 
 destroy:
 	kind delete cluster -n l3cni-two-node

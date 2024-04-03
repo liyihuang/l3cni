@@ -14,7 +14,7 @@ __type(key, __u32);
 __type(value, __u32);
 } bpf_match SEC(".maps");
 
-__attribute__((section("egress"), used))
+__attribute__((section("ingress"), used))
 int drop_src_dst_ip(struct __sk_buff *skb) {
     const int l3_off = ETH_HLEN;                      // IP header offset
     const int l4_off = l3_off + sizeof(struct iphdr); // L4 header offset
