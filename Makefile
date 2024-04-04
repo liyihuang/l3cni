@@ -17,11 +17,6 @@ init:
 	./init.sh
 
 ping:
-	kubectl run  busyboxc1 --image=curlimages/curl --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-control-plane" }}}' -- sleep infinity
-	kubectl run  busyboxc2 --image=nginx:stable-alpine3.17-slim --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-control-plane" }}}'
-	kubectl run  busyboxc3 --image=nginx:stable-alpine3.17-slim --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-control-plane" }}}'
-	kubectl run  busyboxw1 --image=curlimages/curl --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-worker" }}}' -- sleep infinity
-	kubectl run  busyboxw2 --image=nginx:stable-alpine3.17-slim --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-worker" }}}'
 
 install_iptable_firewall:
 	./iptable_firewall.sh install
@@ -32,6 +27,8 @@ uninstall_iptable_firewall:
 install_bpf_firewall:
 	./bpf_firewall.sh install
 
+init_bpf:
+	./init.sh bpf
 destroy:
 	kind delete cluster -n l3cni-two-node
 help:
