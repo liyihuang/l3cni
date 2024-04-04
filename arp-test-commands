@@ -1,0 +1,12 @@
+sudo ip link add name lo2 type dummy
+sudo ip link set dev lo2 up
+sudo ip addr add 127.0.0.2/32 dev lo2
+
+
+sudo tc qdisc del dev lo clsact
+sudo tc qdisc add dev lo clsact
+
+clang -g -O2 -target bpf -Wall -c arp-test.c  -o arp-test.o
+
+sudo tc filter add dev lo ingress bpf da obj arp-test.o sec ingress
+sudo arping 127.0.0.1 -i lo -c 1
