@@ -29,7 +29,22 @@ jq --arg worker_node_podcidr "$worker_node_podcidr" \
     .peer_ip = $control_node_ip' 10-l3cni-worker.conf > tmp_config.json && mv tmp_config.json 10-l3cni-worker.conf
 
 docker cp 10-l3cni-control.conf  l3cni-two-node-control-plane:/etc/cni/net.d/
-docker cp l3cni  l3cni-two-node-control-plane:/opt/cni/bin/
-
 docker cp 10-l3cni-worker.conf  l3cni-two-node-worker:/etc/cni/net.d/
-docker cp l3cni  l3cni-two-node-worker:/opt/cni/bin/
+
+
+if [ "$1" == "" ]; then
+    docker cp l3cni  l3cni-two-node-control-plane:/opt/cni/bin/
+    docker cp l3cni  l3cni-two-node-worker:/opt/cni/bin/
+elif [ "$1" == "bpf" ]; then
+    docker cp l3cni_bpf  l3cni-two-node-control-plane:/opt/cni/bin/l3cni
+    docker cp l3cni_bpf  l3cni-two-node-worker:/opt/cni/bin/l3cni
+
+fi
+
+kubectl run  busyboxc1 --image=curlimages/curl --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-control-plane" }}}' -- sleep infinity
+kubectl run  busyboxc2 --image=nginx:stable-alpine3.17-slim --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-control-plane" }}}'
+kubectl run  busyboxc3 --image=nginx:stable-alpine3.17-slim --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-control-plane" }}}'
+kubectl run  busyboxw1 --image=curlimages/curl --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-worker" }}}' -- sleep infinity
+kubectl run  busyboxw2 --image=nginx:stable-alpine3.17-slim --restart=Never --overrides='{ "spec": { "nodeSelector": { "kubernetes.io/hostname": "l3cni-two-node-worker" }}}'
+
+

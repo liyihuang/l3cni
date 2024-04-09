@@ -4,14 +4,9 @@
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <bpf/bpf_helpers.h>
-#include <bpf/bpf_endian.h>
+#include <string.h>
+#include "bpf_endian.h"
 
-struct {
-__uint(type, BPF_MAP_TYPE_HASH);
-__uint(max_entries, 100);
-__type(key, __u32);
-__type(value, __u32);
-} bpf_match SEC(".maps");
 
 __attribute__((section("ingress"), used))
 int drop_src_dst_ip(struct __sk_buff *skb) {
@@ -27,10 +22,14 @@ int drop_src_dst_ip(struct __sk_buff *skb) {
     if (eth->h_proto != bpf_htons(ETH_P_IP))
        return TC_ACT_OK;
 
-    struct iphdr *ip = (struct iphdr *)(data + l3_off);
-    __u32 *value = bpf_map_lookup_elem(&bpf_match, &(ip->saddr));
-    if (value && ip->daddr == *value){
-        return TC_ACT_SHOT;
+
+    if (eth->h_proto == bpf_htons(ETH_P_IP)){
+        struct iphdr *ip = (struct iphdr *)(data + l3_off);
+
+        bpf_printk("src ip is %x and dst ip is %x", ip->saddr, ip->daddr);
+        unsigned char dst_mac[6] = {0x52, 0x01, 0x83, 0x5d, 0x18, 0xcb};
+        memcpy(eth->h_dest,dst_mac,ETH_ALEN);
+        return bpf_redirect(5,0);
     }
     return TC_ACT_OK;
 }
