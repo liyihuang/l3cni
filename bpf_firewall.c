@@ -4,8 +4,7 @@
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <bpf/bpf_helpers.h>
-
-#include "bpf_endian.h"
+#include <bpf/bpf_endian.h>
 
 struct {
 __uint(type, BPF_MAP_TYPE_HASH);

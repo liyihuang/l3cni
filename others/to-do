@@ -1,6 +1,2 @@
-
-
-bpf forward
-review bpf firewall code
-check to use libbpf or linux
+review bpf  code
 test it on a cloud VM
