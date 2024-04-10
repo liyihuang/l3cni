@@ -1,8 +1,5 @@
 SHELL := /bin/bash
 
-
-
-
 .DEFAULT_GOAL := help
 
 # COLORS
@@ -12,25 +9,25 @@ WHITE  := $(shell tput -Txterm setaf 7)
 RESET  := $(shell tput -Txterm sgr0)
 
 TARGET_MAX_CHAR_NUM=20
-
-init:
+## Start the l3cni with no BPF and 3 pods on controller nodes 2 pods on worker nodes
+init: 
 	./init.sh
-
-ping:
-
-install_iptable_firewall:
+## Install iptable firewall
+install_iptable_firewall: 
 	./iptable_firewall.sh install
-
-uninstall_iptable_firewall:
+## Uninstall iptable firewall
+uninstall_iptable_firewall: 
 	./iptable_firewall.sh uninstall
-
-install_bpf_firewall:
+## Install BPF firewall on top of the l3cni(no BPF)
+install_bpf_firewall: 
 	./bpf_firewall.sh install
-
-init_bpf:
+## Initialize BPF CNI
+init_bpf: #
 	./init.sh bpf
-destroy:
+## Delete the cluster
+destroy: 
 	kind delete cluster -n l3cni-two-node
+
 help:
 	@echo ''
 	@echo 'Usage:'

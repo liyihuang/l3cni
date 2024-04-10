@@ -30,7 +30,6 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
     ip link set "$host_nic" up
     echo "1" > /proc/sys/net/ipv4/conf/"$host_nic"/proxy_arp
     pod_mac=$(ip link show "$CNI_IFNAME" | awk '/link\/ether/ {print $2}')
-    ip link set $CNI_IFNAME netns $netns_name
 
     ip netns exec $netns_name ip link set $CNI_IFNAME up
     ip netns exec "$netns_name" ip addr add "$pod_ip" dev $CNI_IFNAME

@@ -36,8 +36,14 @@ if [ "$1" == "" ]; then
     docker cp l3cni  l3cni-two-node-control-plane:/opt/cni/bin/
     docker cp l3cni  l3cni-two-node-worker:/opt/cni/bin/
 elif [ "$1" == "bpf" ]; then
-    docker cp l3cni_bpf  l3cni-two-node-control-plane:/opt/cni/bin/l3cni
-    docker cp l3cni_bpf  l3cni-two-node-worker:/opt/cni/bin/l3cni
+    clang -g -O2 -target bpf -Wall -c bpf_forward.c -o bpf_forward.o
+    nodes_list=("l3cni-two-node-control-plane" "l3cni-two-node-worker")
+    for node in "${nodes_list[@]}"; do
+        docker cp l3cni_bpf "$node":/opt/cni/bin/l3cni
+        docker exec "$node" apt update
+        docker exec "$node" apt install bpftool -y
+        docker cp bpf_forward.o "$node":/root
+    done
 
 fi
 

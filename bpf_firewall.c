@@ -6,28 +6,28 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_endian.h>
 
-struct {
-__uint(type, BPF_MAP_TYPE_HASH);
-__uint(max_entries, 100);
-__type(key, __u32);
-__type(value, __u32);
-} bpf_match SEC(".maps");
+struct bpf_map_def SEC("maps") bpf_match = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 100,
+};
 
 __attribute__((section("ingress"), used))
 int drop_src_dst_ip(struct __sk_buff *skb) {
-    const int l3_off = ETH_HLEN;                      // IP header offset
-    const int l4_off = l3_off + sizeof(struct iphdr); // L4 header offset
+    const int l2_header = ETH_HLEN;                      
+    const int l2_l3_headers = l2_header + sizeof(struct iphdr); 
 
     void *data = (void*)(long)skb->data;
     void *data_end = (void*)(long)skb->data_end;
-    if (data_end < data + l4_off)
+    if (data_end < data + l2_l3_headers)
         return TC_ACT_OK;
 
     struct ethhdr *eth = data;
     if (eth->h_proto != bpf_htons(ETH_P_IP))
        return TC_ACT_OK;
 
-    struct iphdr *ip = (struct iphdr *)(data + l3_off);
+    struct iphdr *ip = (struct iphdr *)(data + l2_header);
     __u32 *value = bpf_map_lookup_elem(&bpf_match, &(ip->saddr));
     if (value && ip->daddr == *value){
         return TC_ACT_SHOT;
