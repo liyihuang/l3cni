@@ -22,18 +22,41 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
         echo "$host" > "$file"
     fi
 
-    pod_ip=$(echo "$podcidr" | sed "s:\.0/24:.$host:")/32
+
     host_nic=host-"$host"
     ip link add "$host_nic" type veth peer name $CNI_IFNAME netns $netns_name
     ip link set "$host_nic" up
-    pod_mac=$(ip link show "$CNI_IFNAME" | awk '/link\/ether/ {print $2}')
     host_mac=$(ip link show "$host_nic" | awk '/link\/ether/ {print $2}')
-    tc qdisc add dev "$host_nic" clsact
-    tc filter add dev "$host_nic" ingress bpf da obj /root/bpf_forward.o sec ingress
 
+    pod_ip=$(echo "$podcidr" | sed "s:\.0/24:.$host:")/32
     ip netns exec $netns_name ip link set $CNI_IFNAME up
     ip netns exec "$netns_name" ip addr add "$pod_ip" dev $CNI_IFNAME
     ip netns exec "$netns_name" ip route add default dev $CNI_IFNAME
+    pod_mac=$(ip netns exec $netns_name ip link show "$CNI_IFNAME" | awk '/link\/ether/ {print $2}')
+
+
+    pod_ip_bpf_map=$(echo "$pod_ip" | awk -F'/' '{gsub(/\./," "); print $1}')
+    host_mac_bpf_map=$(echo "$host_mac" | awk '{gsub(/:/," "); print}')
+    pod_mac_bpf_map=$(echo "$pod_mac" | awk '{gsub(/:/," "); print}')
+    if_index=$(ip -o link show "$host_nic" | awk -F': ' '{print $1}')
+    bpf_file=$(ls -d /root/bpf_forward* 2>/dev/null)
+    if [ -n "$bpf_file" ]; then
+        node_name=$(echo "$bpf_file" | awk -F'_' '{split($NF, parts, "."); print parts[1]}')
+    else
+        return 1
+    fi
+    tc qdisc add dev "$host_nic" clsact
+    tc filter add dev "$host_nic" ingress bpf da obj /root/bpf_forward_"$node_name".o sec ingress
+
+    bpftool map update name arp_"$node_name" key $pod_ip_bpf_map value hex $host_mac_bpf_map 00 00 $host 00 00 00
+    bpftool map update name forward_"$node_name" key $pod_ip_bpf_map value hex $pod_mac_bpf_map 00 00 $host 00 00 00
+
+    if [ "$host" -eq 2 ]; then
+        tc qdisc add dev eth0 clsact
+        tc filter add dev eth0 ingress bpf da obj /root/bpf_forward_"$node_name".o sec ingress
+    fi
+
+
 
 
     output_template='
