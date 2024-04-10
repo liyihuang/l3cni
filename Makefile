@@ -21,9 +21,13 @@ uninstall_iptable_firewall:
 ## Install BPF firewall on top of the l3cni(no BPF)
 install_bpf_firewall: 
 	./bpf_firewall.sh install
-## Initialize BPF CNI
+## Initialize BPF CNI and pods on the same node can ping
 init_bpf: #
 	./init.sh bpf
+
+## update the bpf map so the pods on the different nodes can ping
+inter_node_bpf: #
+	./bpf_inter_node.sh
 ## Delete the cluster
 destroy: 
 	kind delete cluster -n l3cni-two-node
