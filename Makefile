@@ -12,10 +12,10 @@ TARGET_MAX_CHAR_NUM=20
 ## Start the l3cni with no BPF and 3 pods on controller nodes 2 pods on worker nodes
 init: 
 	./init.sh
-## Install iptable firewall
+## Install iptable firewall on top of the l3cni(no BPF)
 install_iptable_firewall: 
 	./iptable_firewall.sh install
-## Uninstall iptable firewall
+## Uninstall iptable firewall on top of the l3cni(no BPF)
 uninstall_iptable_firewall: 
 	./iptable_firewall.sh uninstall
 ## Install BPF firewall on top of the l3cni(no BPF)

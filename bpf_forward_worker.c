@@ -27,7 +27,7 @@ struct dst_mac_if {
     __u32 ifindex;
 };
 
-struct bpf_elf_map SEC("maps") bpf_forward_map = {
+struct bpf_elf_map SEC("maps") bpf_forward_map_worker = {
 	.type = BPF_MAP_TYPE_HASH,
 	.size_key = sizeof(__u32),
 	.size_value = sizeof(struct dst_mac_if),
@@ -40,7 +40,7 @@ struct reply_mac_if {
     __u32 reply_if_index;
 };
 
-struct bpf_elf_map SEC("maps") proxy_arp_map = {
+struct bpf_elf_map SEC("maps") proxy_arp_map_worker = {
 	.type = BPF_MAP_TYPE_HASH,
 	.size_key = sizeof(__u32),
 	.size_value = sizeof(struct reply_mac_if),
@@ -69,7 +69,7 @@ int drop_src_dst_ip(struct __sk_buff *skb) {
         
         unsigned char reply_src_mac[ETH_ALEN];
         bpf_printk("sip is %x ", sip);
-        struct reply_mac_if *result = bpf_map_lookup_elem(&proxy_arp_map, &(sip));
+        struct reply_mac_if *result = bpf_map_lookup_elem(&proxy_arp_map_worker, &(sip));
         if (result)
             memcpy(&reply_src_mac, &result->reply_src_mac, ETH_ALEN);
         else {
@@ -102,7 +102,7 @@ int drop_src_dst_ip(struct __sk_buff *skb) {
 
     bpf_printk("it's an normal IP packet");
     struct iphdr *ip = (struct iphdr *)(data + l2_header);
-    struct dst_mac_if *result = bpf_map_lookup_elem(&bpf_forward_map, &(ip->daddr));
+    struct dst_mac_if *result = bpf_map_lookup_elem(&bpf_forward_map_worker, &(ip->daddr));
     if (result) {
         memcpy(eth->h_dest, result->dest_mac, ETH_ALEN);
         bpf_printk("it's redirecting to %d", result->ifindex);

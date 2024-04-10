@@ -28,10 +28,26 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
     ip link set "$host_nic" up
     pod_mac=$(ip link show "$CNI_IFNAME" | awk '/link\/ether/ {print $2}')
     host_mac=$(ip link show "$host_nic" | awk '/link\/ether/ {print $2}')
+
+    pod_ip_bpf_map=$(echo "$pod_ip" | awk -F'/' '{gsub(/\./," "); print $1}')
+    host_mac_bpf_map=$(echo "$host_mac" | awk '{gsub(/:/," "); print}')
+    pod_mac_bpf_map=$(echo "$pod_mac" | awk '{gsub(/:/," "); print}')
+    if_index=$(ip -o link show "$host_nic" | awk -F': ' '{print $1}')
+    bpf_file=$(ls -d /root/bpf_forward* 2>/dev/null)
+    if [ -n "$bpf_file" ]; then
+        node_name=$(echo "$file" | awk -F'_' '{print $(NF-1)}')
+        echo "$suffix"
+    else
+        return 1
+    fi
     tc qdisc add dev "$host_nic" clsact
     tc filter add dev "$host_nic" ingress bpf da obj /root/bpf_forward.o sec ingress
-    bpftool map update name proxy_arp_map key "$pod_ip" value hex "$host_mac" 00 00 "$host" 00 00 00
-    bpftool map update name bpf_forward_map key "$pod_ip" value hex "$host_mac" 00 00 "$host" 00 00 00
+    
+    bpftool map update name proxy_arp_map key $pod_ip_bpf_map value hex $host_mac_bpf_map 00 00 $host 00 00 00
+
+
+    bpftool map update name proxy_arp_map_"$node_name" key $pod_ip_bpf_map value hex $host_mac_bpf_map 00 00 $host 00 00 00
+    bpftool map update name bpf_forward_map_"$node_name" key $pod_ip_bpf_map value hex $pod_mac_bpf_map 00 00 $host 00 00 00
 
     ip netns exec $netns_name ip link set $CNI_IFNAME up
     ip netns exec "$netns_name" ip addr add "$pod_ip" dev $CNI_IFNAME
