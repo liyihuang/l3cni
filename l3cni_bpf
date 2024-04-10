@@ -30,6 +30,8 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
     host_mac=$(ip link show "$host_nic" | awk '/link\/ether/ {print $2}')
     tc qdisc add dev "$host_nic" clsact
     tc filter add dev "$host_nic" ingress bpf da obj /root/bpf_forward.o sec ingress
+    bpftool map update name proxy_arp_map key "$pod_ip" value hex "$host_mac" 00 00 "$host" 00 00 00
+    bpftool map update name bpf_forward_map key "$pod_ip" value hex "$host_mac" 00 00 "$host" 00 00 00
 
     ip netns exec $netns_name ip link set $CNI_IFNAME up
     ip netns exec "$netns_name" ip addr add "$pod_ip" dev $CNI_IFNAME
