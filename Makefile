@@ -27,11 +27,11 @@ install_bpf_firewall:
 uninstall_bpf_firewall: 
 	./bpf_firewall.sh uninstall
 ## Start kind cluster with 2 nodes and use l3cni_bpf as the CNI(no proxy ARP or routing on kernel, just BPF do forwarding) (c1 can talk to c2 and c3 but can't talk to w1 or w2)
-init_bpf: #
+init_l3cni_bpf:
 	./init.sh bpf
 
 ## Update the bpf map for l3cni_bpf so the pods on the different nodes can ping  (c1 can talk to c2, c3, w1 and w2)
-inter_node_bpf: #
+update_inter_node_bpf_map: #
 	./bpf_inter_node.sh
 ## Delete the cluster
 destroy: 

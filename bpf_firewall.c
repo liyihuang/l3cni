@@ -14,7 +14,7 @@ struct bpf_map_def SEC("maps") bpf_match = {
 };
 
 __attribute__((section("ingress"), used))
-int drop_src_dst_ip(struct __sk_buff *skb) {
+int bpf_firewall(struct __sk_buff *skb) {
     const int l2_header = ETH_HLEN;                      
     const int l2_l3_headers = l2_header + sizeof(struct iphdr); 
 

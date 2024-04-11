@@ -49,7 +49,7 @@ struct bpf_elf_map SEC("maps") ARP = {
 };
 
 __attribute__((section("ingress"), used))
-int drop_src_dst_ip(struct __sk_buff *skb) {
+int bpf_forward(struct __sk_buff *skb) {
     const int l2_header = ETH_HLEN;
     const int arp_length = 28;
     void *data = (void*)(long)skb->data;
