@@ -36,8 +36,8 @@ if [ "$1" == "" ]; then
     docker cp l3cni  l3cni-two-node-control-plane:/opt/cni/bin/
     docker cp l3cni  l3cni-two-node-worker:/opt/cni/bin/
 elif [ "$1" == "bpf" ]; then
-    clang -g -O2 -target bpf -Wall -c bpf_forward_con.c -o bpf_forward_con.o
-    clang -g -O2 -target bpf -Wall -c bpf_forward_worker.c -o bpf_forward_worker.o
+    clang -g -O2 -target bpf -Wall -c bpf_forward.c -o bpf_forward_con.o -D FORWARD=forward_con -D ARP=arp_con
+    clang -g -O2 -target bpf -Wall -c bpf_forward.c -o bpf_forward_worker.o -D FORWARD=forward_worker -D ARP=arp_worker
     docker cp bpf_forward_con.o l3cni-two-node-control-plane:/root
     docker cp bpf_forward_worker.o l3cni-two-node-worker:/root
     nodes_list=("l3cni-two-node-control-plane" "l3cni-two-node-worker")
