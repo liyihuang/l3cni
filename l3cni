@@ -24,22 +24,23 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
         echo "$host" > "$file"
     fi
 
-    pod_ip=$(echo "$podcidr" | sed "s:\.0/24:.$host:")/32
+    pod_cidr=$(echo "$podcidr" | sed "s:\.0/24:.$host:")/32
     host_nic=host-"$host"
+    host_nic_ip=$(echo "$podcidr" | sed "s:\.0/24:.1:")
+    host_nic_cidr=$host_nic_ip/32
+
     ip link add "$host_nic" type veth peer name $CNI_IFNAME netns $netns_name
-    ip link set "$host_nic" up
-    echo "1" > /proc/sys/net/ipv4/conf/"$host_nic"/proxy_arp
-    pod_mac=$(ip link show "$CNI_IFNAME" | awk '/link\/ether/ {print $2}')
 
     ip netns exec $netns_name ip link set $CNI_IFNAME up
-    ip netns exec "$netns_name" ip addr add "$pod_ip" dev $CNI_IFNAME
-    ip netns exec "$netns_name" ip route add default dev $CNI_IFNAME
-    ip route add "$pod_ip" dev "$host_nic"
+    ip link set "$host_nic" up
 
+    ip netns exec "$netns_name" ip addr add "$pod_cidr" dev $CNI_IFNAME
+    ip addr add "$host_nic_cidr" dev $host_nic
+
+    ip netns exec "$netns_name" ip route add $host_nic_ip dev $CNI_IFNAME
+    ip netns exec "$netns_name" ip route add default via $host_nic_ip dev $CNI_IFNAME
+    ip route add "$pod_cidr" dev "$host_nic"
     ip route add "$peer_net" via "$peer_ip" dev eth0
-
-
-
 
 
     output_template='
@@ -61,7 +62,8 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
       ]
     }'
 
-    output=$(printf "${output_template}" "$CNI_IFNAME" "$pod_mac" "$CNI_NETNS" "$pod_ip")
+    pod_mac=$(ip link show "$CNI_IFNAME" | awk '/link\/ether/ {print $2}')
+    output=$(printf "${output_template}" "$CNI_IFNAME" "$pod_mac" "$CNI_NETNS" "$pod_cidr")
     echo "$output" >> "$log"
     echo "$output"
 
