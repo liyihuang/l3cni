@@ -8,9 +8,9 @@ worker_node_mac_bpf=$(docker inspect l3cni-two-node-worker| jq -r '.[].NetworkSe
 
 controller_node_eth0_index=$(docker exec l3cni-two-node-control-plane ip -o link show eth0 | awk -F': ' '{print $1}')
 
-controller_node_eth0_index_bpf=$(bc <<< "obase=16; $controller_node_eth0_index")
+controller_node_eth0_index_bpf=$(printf "%08x" $controller_node_eth0_index | sed -r 's/(..)(..)(..)(..)/\4 \3 \2 \1/')
 worker_node_eth0_index=$(docker exec l3cni-two-node-worker ip -o link show eth0 | awk -F': ' '{print $1}')
-worker_node_eth0_index_bpf=$(bc <<< "obase=16; $worker_node_eth0_index")
+worker_node_eth0_index_bpf=$(printf "%08x" $worker_node_eth0_index | sed -r 's/(..)(..)(..)(..)/\4 \3 \2 \1/')
 
 controller_pod_ips=()
 worker_pod_ips=()
@@ -30,11 +30,11 @@ done < <(kubectl get pods --all-namespaces -o custom-columns=IP:.status.podIP,NO
 echo "update the bpfmap on worker so they know how to reach pods on the controller"
 for ip in ${controller_pod_ips[@]}; do
     ip_bpf=$(echo "$ip" | awk '{gsub(/\./, " "); print}')
-    docker exec l3cni-two-node-worker bpftool map update name forward_worker key $ip_bpf value hex $controller_node_mac_bpf 00 00 $worker_node_eth0_index_bpf 00 00 00
+    docker exec l3cni-two-node-worker bpftool map update name forward_worker key $ip_bpf value hex $controller_node_mac_bpf 00 00 $worker_node_eth0_index_bpf
 done
 
 echo "update the bpfmap on controller so they know how to reach pods on the worker"
 for ip in ${worker_pod_ips[@]}; do
     ip_bpf=$(echo "$ip" | awk '{gsub(/\./, " "); print}')
-    docker exec l3cni-two-node-control-plane bpftool map update name forward_con key $ip_bpf value hex $worker_node_mac_bpf 00 00 $controller_node_eth0_index_bpf 00 00 00
+    docker exec l3cni-two-node-control-plane bpftool map update name forward_con key $ip_bpf value hex $worker_node_mac_bpf 00 00 $controller_node_eth0_index_bpf
 done

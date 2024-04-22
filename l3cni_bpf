@@ -8,7 +8,8 @@ echo "env: $(printenv)" >> "$log"
 
 if [ "$CNI_COMMAND" == "ADD" ]; then
     podcidr=$(echo $config | jq -r ".podcidr")
-    netns_name=$(echo "$CNI_NETNS" | cut -d'/' -f5)
+    netns_name=$(echo "$CNI_NETNS" | awk -F'/' '{print $NF}')
+
 
 
     file="/tmp/host"
@@ -22,22 +23,24 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
         echo "$host" > "$file"
     fi
 
-
+    pod_ip_mask=$(echo "$podcidr" | sed "s:\.0/24:.$host:")/32
+    host_ip=$(echo "$podcidr" | sed "s:\.0/24:.1:")
+    host_ip_mask=$(echo "$podcidr" | sed "s:\.0/24:.1:")/32
     host_nic=host-"$host"
     ip link add "$host_nic" type veth peer name $CNI_IFNAME netns $netns_name
     ip link set "$host_nic" up
     host_mac=$(ip link show "$host_nic" | awk '/link\/ether/ {print $2}')
 
-    pod_ip=$(echo "$podcidr" | sed "s:\.0/24:.$host:")/32
     ip netns exec $netns_name ip link set $CNI_IFNAME up
-    ip netns exec "$netns_name" ip addr add "$pod_ip" dev $CNI_IFNAME
-    ip netns exec "$netns_name" ip route add default dev $CNI_IFNAME
+    ip netns exec "$netns_name" ip addr add "$pod_ip_mask" dev $CNI_IFNAME
+    ip netns exec "$netns_name" ip route add "$host_ip" dev $CNI_IFNAME
+    ip netns exec "$netns_name" ip route add default via "$host_ip" dev $CNI_IFNAME
     pod_mac=$(ip netns exec $netns_name ip link show "$CNI_IFNAME" | awk '/link\/ether/ {print $2}')
 
-
-    pod_ip_bpf_map=$(echo "$pod_ip" | awk -F'/' '{gsub(/\./," "); print $1}')
+    pod_ip_bpf_map=$(echo "$pod_ip_mask" | awk -F'/' '{gsub(/\./," "); print $1}')
     host_mac_bpf_map=$(echo "$host_mac" | awk '{gsub(/:/," "); print}')
     pod_mac_bpf_map=$(echo "$pod_mac" | awk '{gsub(/:/," "); print}')
+    host_index_bpf_map=$(printf "%08x" $host | sed -r 's/(..)(..)(..)(..)/\4 \3 \2 \1/')
     if_index=$(ip -o link show "$host_nic" | awk -F': ' '{print $1}')
     bpf_file=$(ls -d /root/bpf_forward* 2>/dev/null)
     if [ -n "$bpf_file" ]; then
@@ -48,8 +51,8 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
     tc qdisc add dev "$host_nic" clsact
     tc filter add dev "$host_nic" ingress bpf da obj /root/bpf_forward_"$node_name".o sec ingress
 
-    bpftool map update name arp_"$node_name" key $pod_ip_bpf_map value hex $host_mac_bpf_map 00 00 $host 00 00 00
-    bpftool map update name forward_"$node_name" key $pod_ip_bpf_map value hex $pod_mac_bpf_map 00 00 $host 00 00 00
+    bpftool map update name arp_"$node_name" key $pod_ip_bpf_map value hex $host_mac_bpf_map 00 00 $host_index_bpf_map
+    bpftool map update name forward_"$node_name" key $pod_ip_bpf_map value hex $pod_mac_bpf_map 00 00 $host_index_bpf_map
 
     if [ "$host" -eq 2 ]; then
         tc qdisc add dev eth0 clsact
@@ -78,7 +81,7 @@ if [ "$CNI_COMMAND" == "ADD" ]; then
       ]
     }'
 
-    output=$(printf "${output_template}" "$CNI_IFNAME" "$pod_mac" "$CNI_NETNS" "$pod_ip")
+    output=$(printf "${output_template}" "$CNI_IFNAME" "$pod_mac" "$CNI_NETNS" "$pod_ip_mask")
     echo "$output" >> "$log"
     echo "$output"
 
